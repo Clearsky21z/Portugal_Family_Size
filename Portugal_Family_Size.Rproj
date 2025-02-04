@@ -1,0 +1,14 @@
+Version: 1.0
+ProjectId: e00dd3ba-b748-435c-baf3-1edeb8aa9f27
+
+RestoreWorkspace: Default
+SaveWorkspace: Default
+AlwaysSaveHistory: Default
+
+EnableCodeIndexing: Yes
+UseSpacesForTab: Yes
+NumSpacesForTab: 2
+Encoding: UTF-8
+
+RnwWeave: Sweave
+LaTeX: pdfLaTeX
