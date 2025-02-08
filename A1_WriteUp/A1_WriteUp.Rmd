@@ -1,7 +1,7 @@
 ---
 title: "Effect of Literacy and Age at Marriage on Family Size in Portugal"
 author: 
-  - Heidi Wang
+  - Heidi Wang AKA Wu Zetian
   - John Zhang
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
@@ -11,15 +11,153 @@ output:
 bibliography: reference.bib
 ---
 
+\newpage
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r, include=FALSE}
+library(MASS)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+load('portugal.RData')
+portugal
+summary(portugal)
+table(portugal$literacy)
 ```
 
 # Introduction
 
 This study aims to investigate how literacy and the age at marriage affect family size in Portugal using data from the 1979 fertility survey. Prior research has shown that literacy and socio-economic factors play a significant role in determining fertility rates. [Cite relevant literature here]. 
 
-# Methods
+# Method
 
 We use a Generalized Linear Model (GLM) with a Poisson distribution to model the number of children per family, accounting for potential overdispersion using a quasi-Poisson or negative binomial approach. 
+
+# Result
+## Statistical Summary
+```{r descriptive_stats}
+# Prepare categorical data with modified labels
+portugal <- portugal %>%
+  mutate(ageMarried = recode(ageMarried, "30toInf" = "30+", "0to15" = "0 - 15"),
+         region = recode(region, "lt10k" = "Less than 10k"))
+
+# Ensure ageMarried follows the correct order
+age_levels <- c("never", "0to15", "15to18", "18to20", "20to22", "22to25", "25to30", "30+")
+portugal$ageMarried <- factor(portugal$ageMarried, levels = age_levels, ordered = TRUE)
+
+# Compute summary statistics
+descriptive_stats <- portugal %>%
+  summarise(
+    Mean_Children = mean(children, na.rm = TRUE),
+    SD_Children = sd(children, na.rm = TRUE),
+    Min_Children = min(children, na.rm = TRUE),
+    Max_Children = max(children, na.rm = TRUE),
+    
+    Mean_Age = mean(age, na.rm = TRUE),
+    SD_Age = sd(age, na.rm = TRUE),
+    Min_Age = min(age, na.rm = TRUE),
+    Max_Age = max(age, na.rm = TRUE)
+  )
+
+# Count of categorical variables
+table_ageMarried <- as.data.frame(table(portugal$ageMarried))
+table_region <- as.data.frame(table(portugal$region))
+table_literacy <- as.data.frame(table(portugal$literacy))
+
+# Calculate percentages
+table_ageMarried <- table_ageMarried %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
+table_region <- table_region %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
+table_literacy <- table_literacy %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
+
+# Prepare data for faceted bar plot
+categorical_counts <- bind_rows(
+  table_ageMarried %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Age at Marriage"),
+  table_region %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Region"),
+  table_literacy %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Literacy")
+)
+
+# Create faceted bar plot with percentage labels
+ggplot(categorical_counts, aes(x = Variable, y = Count, fill = Category)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  geom_text(aes(label = paste0(Percentage, "%")), vjust = -0.5) +
+  facet_wrap(~ Category, scales = "free") +
+  labs(title = "Counts of Categorical Variables", x = "Category", y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```
+# Model Selection
+```{r}
+model_1 <- glm(children ~ literacy + ageMarried + region, family = poisson(link = "log"), data = portugal)
+summary_1 <- summary(model_1)
+coeff_table <- data.frame(
+  Estimate = summary_1$coefficients[, "Estimate"],
+  Std_Error = summary_1$coefficients[, "Std. Error"],
+  P_Value = summary_1$coefficients[, "Pr(>|z|)"]
+)
+kable(coeff_table, caption = "Model Coefficients from Poisson Regression")
+```
+
+```{r}
+portugal <- portugal %>%
+  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 1, monthsSinceM))
+model_2 <- glm(children ~ literacy + ageMarried + region, offset = log(monthsSinceM), family = poisson(link = "log"), data = portugal)
+summary_2 <- summary(model_2)
+coeff_table <- data.frame(
+  Estimate = summary_2$coefficients[, "Estimate"],
+  Std_Error = summary_2$coefficients[, "Std. Error"],
+  P_Value = summary_2$coefficients[, "Pr(>|z|)"]
+)
+kable(coeff_table, caption = "Model Coefficients from Poisson Regression with Offset")
+```
+
+```{r}
+dispersion_1 <- sum(residuals(model_1, type = "pearson")^2) / model_1$df.residual
+dispersion_2 <- sum(residuals(model_2, type = "pearson")^2) / model_2$df.residual
+
+dispersion_1
+dispersion_2
+```
+
+```{r}
+# Load necessary library
+library(MASS)
+
+# Ensure monthsSinceM has no zeros or NAs to avoid log issues
+portugal <- portugal %>%
+  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 1, monthsSinceM))
+
+# Fit Negative Binomial Model with Offset
+nb_model <- glm.nb(children ~ literacy + ageMarried + region + offset(log(monthsSinceM)), 
+                   data = portugal)
+
+# Summarize the model
+summary_nb <- summary(nb_model)
+
+# Extract coefficients from the model
+coeff_table <- data.frame(
+  Estimate = summary_nb$coefficients[, "Estimate"],
+  Std_Error = summary_nb$coefficients[, "Std. Error"],
+  P_Value = summary_nb$coefficients[, "Pr(>|z|)"]
+)
+
+# Display using knitr::kable
+kable(coeff_table, caption = "Model Coefficients from Negative Binomial Regression with Offset")
+
+```
+```{r}
+# Check dispersion statistic for NB Model
+dispersion_nb <- sum(residuals(nb_model, type = "pearson")^2) / nb_model$df.residual
+
+# Display result
+dispersion_nb
+```
+
+
+# Conclusion
+
 
