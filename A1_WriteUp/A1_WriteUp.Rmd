@@ -17,7 +17,7 @@ bibliography: reference.bib
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-```{r, include=FALSE}
+```{r, include=}
 library(MASS)
 library(ggplot2)
 library(dplyr)
@@ -39,124 +39,138 @@ We use a Generalized Linear Model (GLM) with a Poisson distribution to model the
 # Result
 ## Statistical Summary
 ```{r descriptive_stats}
-# Prepare categorical data with modified labels
+# Modify labels for categorical variables
 portugal <- portugal %>%
-  mutate(ageMarried = recode(ageMarried, "30toInf" = "30+", "0to15" = "0 - 15"),
-         region = recode(region, "lt10k" = "Less than 10k"))
+  mutate(ageMarried = recode(ageMarried, "30toInf" = "30+", "0to15" = "0 - 15", 
+                             "15to18" = "15 - 18", "18to20" = "18 - 20", 
+                             "20to22" = "20 - 22", "22to25" = "22 - 25", 
+                             "25to30" = "25 - 30"),
+         region = recode(region, "lt10k" = "Less than 10k", "10-20k" = "10k - 20k", 
+                         "20k+" = "20k+", "porto" = "Porto", "lisbon" = "Lisbon"),
+         literacy = recode(literacy, "yes" = "Yes", "no" = "No"))
 
-# Ensure ageMarried follows the correct order
-age_levels <- c("never", "0to15", "15to18", "18to20", "20to22", "22to25", "25to30", "30+")
-portugal$ageMarried <- factor(portugal$ageMarried, levels = age_levels, ordered = TRUE)
+# Ensure region follows the correct order
+region_levels <- c("Less than 10k", "10k - 20k", "20k+", "Porto", "Lisbon")
+portugal$region <- factor(portugal$region, levels = region_levels, ordered = TRUE)
 
-# Compute summary statistics
-descriptive_stats <- portugal %>%
-  summarise(
-    Mean_Children = mean(children, na.rm = TRUE),
-    SD_Children = sd(children, na.rm = TRUE),
-    Min_Children = min(children, na.rm = TRUE),
-    Max_Children = max(children, na.rm = TRUE),
-    
-    Mean_Age = mean(age, na.rm = TRUE),
-    SD_Age = sd(age, na.rm = TRUE),
-    Min_Age = min(age, na.rm = TRUE),
-    Max_Age = max(age, na.rm = TRUE)
-  )
+# Count categorical variables and calculate percentages
+table_ageMarried <- as.data.frame(table(portugal$ageMarried)) %>% 
+  mutate(Percentage = sprintf("%.1f", round(Freq / sum(Freq) * 100, 1)), Category = "Age at Marriage")
 
-# Count of categorical variables
-table_ageMarried <- as.data.frame(table(portugal$ageMarried))
-table_region <- as.data.frame(table(portugal$region))
-table_literacy <- as.data.frame(table(portugal$literacy))
+table_region <- as.data.frame(table(portugal$region)) %>% 
+  mutate(Percentage = sprintf("%.1f", round(Freq / sum(Freq) * 100, 1)), Category = "Region")
 
-# Calculate percentages
-table_ageMarried <- table_ageMarried %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
-table_region <- table_region %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
-table_literacy <- table_literacy %>% mutate(Percentage = round(Freq / sum(Freq) * 100, 1))
+table_literacy <- as.data.frame(table(portugal$literacy)) %>% 
+  mutate(Percentage = sprintf("%.1f", round(Freq / sum(Freq) * 100, 1)), Category = "Literacy")
 
-# Prepare data for faceted bar plot
-categorical_counts <- bind_rows(
-  table_ageMarried %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Age at Marriage"),
-  table_region %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Region"),
-  table_literacy %>% rename(Variable = Var1, Count = Freq) %>% mutate(Category = "Literacy")
-)
+# Combine all tables
+data_combined <- bind_rows(table_ageMarried, table_region, table_literacy)
+colnames(data_combined)[1] <- "Variable"
 
-# Create faceted bar plot with percentage labels
-ggplot(categorical_counts, aes(x = Variable, y = Count, fill = Category)) +
+# Generate faceted bar plot with correct formatting
+ggplot(data_combined, aes(x = Variable, y = Freq, fill = Category)) +
   geom_bar(stat = "identity", show.legend = FALSE) +
-  geom_text(aes(label = paste0(Percentage, "%")), vjust = -0.5) +
-  facet_wrap(~ Category, scales = "free") +
-  labs(title = "Counts of Categorical Variables", x = "Category", y = "Count") +
+  geom_text(aes(label = paste0(Percentage, "%")), vjust = -0.5, size = 3) +  # Adjusted text size
+  facet_wrap(~ Category, scales = "free_x") +
+  labs(title = "Distribution of Categorical Variables", x = "Category", y = "Count") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-```
-# Model Selection
-```{r}
-model_1 <- glm(children ~ literacy + ageMarried + region, family = poisson(link = "log"), data = portugal)
-summary_1 <- summary(model_1)
-coeff_table <- data.frame(
-  Estimate = summary_1$coefficients[, "Estimate"],
-  Std_Error = summary_1$coefficients[, "Std. Error"],
-  P_Value = summary_1$coefficients[, "Pr(>|z|)"]
-)
-kable(coeff_table, caption = "Model Coefficients from Poisson Regression")
+# Exploratory Data Analysis for Poisson Assumption
+
+```{r poisson_eda}
+# Histogram of children count with density
+ggplot(portugal, aes(x = children)) +
+  geom_histogram(aes(y = ..density..), bins = 15, fill = "blue", alpha = 0.5, color = "black") +
+  geom_density(color = "red", size = 1) +
+  labs(title = "Distribution of Number of Children", x = "Children", y = "Density") +
+  theme_minimal()
+
+# Checking mean vs variance for Poisson suitability
+mean_children <- mean(portugal$children, na.rm = TRUE)
+var_children <- var(portugal$children, na.rm = TRUE)
+cat("Mean of children:", mean_children, "\n")
+cat("Variance of children:", var_children, "\n")
 ```
 
+# Model Selection
 ```{r}
 portugal <- portugal %>%
-  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 1, monthsSinceM))
-model_2 <- glm(children ~ literacy + ageMarried + region, offset = log(monthsSinceM), family = poisson(link = "log"), data = portugal)
-summary_2 <- summary(model_2)
+  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 0.0001, monthsSinceM))
+model_1 <- glm(children ~ literacy + ageMarried + region, offset = log(monthsSinceM), family = poisson(link = "log"), data = portugal)
+summary_1 <- summary(model_1)
 coeff_table <- data.frame(
-  Estimate = summary_2$coefficients[, "Estimate"],
-  Std_Error = summary_2$coefficients[, "Std. Error"],
-  P_Value = summary_2$coefficients[, "Pr(>|z|)"]
+  Estimate = round(summary_1$coefficients[, "Estimate"], 3),
+  Std_Error = round(summary_1$coefficients[, "Std. Error"], 3),
+  P_Value = round(summary_1$coefficients[, "Pr(>|z|)"], 3)
 )
 kable(coeff_table, caption = "Model Coefficients from Poisson Regression with Offset")
 ```
 
 ```{r}
-dispersion_1 <- sum(residuals(model_1, type = "pearson")^2) / model_1$df.residual
-dispersion_2 <- sum(residuals(model_2, type = "pearson")^2) / model_2$df.residual
+# Compute confidence intervals and exponentiate them
+poisson_CI <- as.data.frame(exp(confint(model_1)[-1, ]))
 
-dispersion_1
-dispersion_2
+# Extract variable names
+poisson_CI$variable <- rownames(poisson_CI)
+
+# Compute effect sizes for plotting
+poisson_CI$x <- 1:nrow(poisson_CI)
+poisson_CI$cex <- sqrt(1 / apply(log(poisson_CI[,1:2]), 1, diff)) 
+
+# Compute mean x-position for grouped labels
+forXaxis <- tapply(poisson_CI$x, poisson_CI$variable, mean)
+
+# Plot the effects
+matplot(poisson_CI[,1:2], type = "n", xaxt = "n", bty = "n", log = "y", ylab = "RR")
+
+# Add confidence intervals
+segments(poisson_CI$x, poisson_CI[,1], poisson_CI$x, poisson_CI[,2])
+
+# Add points for the estimates
+points(poisson_CI$x, exp(summary_1$coefficients[-1, "Estimate"]), pch = 15, cex = poisson_CI$cex, col = "#00000030")
+
+# Add only vertical text labels
+mtext(poisson_CI$variable, 1, at = poisson_CI$x, las = 3, line = -1)
+
+# Remove horizontal labels (commenting out this line)
+# mtext(names(forXaxis), 1, at = forXaxis, line = -2)
+
+# Add a reference line at RR = 1
+abline(h = 1, lty = 3)
 ```
+
 
 ```{r}
 # Load necessary library
-library(MASS)
+library(glmmTMB)
 
 # Ensure monthsSinceM has no zeros or NAs to avoid log issues
 portugal <- portugal %>%
-  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 1, monthsSinceM))
+  mutate(monthsSinceM = ifelse(is.na(monthsSinceM) | monthsSinceM == 0, 0.0001, monthsSinceM))
 
-# Fit Negative Binomial Model with Offset
-nb_model <- glm.nb(children ~ literacy + ageMarried + region + offset(log(monthsSinceM)), 
-                   data = portugal)
+# Fit Negative Binomial Model using glmmTMB
+nb_model <- glmmTMB(children ~ literacy + ageMarried + region + offset(log(monthsSinceM)), 
+                    data = portugal, 
+                    family = nbinom2)
 
-# Summarize the model
-summary_nb <- summary(nb_model)
+# Extract confidence intervals
+conf_intervals <- confint(nb_model)
 
-# Extract coefficients from the model
-coeff_table <- data.frame(
-  Estimate = summary_nb$coefficients[, "Estimate"],
-  Std_Error = summary_nb$coefficients[, "Std. Error"],
-  P_Value = summary_nb$coefficients[, "Pr(>|z|)"]
+# Compute sigma variation
+sigma_values <- 1 / sqrt(confint(nb_model, parm = "sigma"))
+
+# Format coefficient table
+coeff_table <- rbind(
+  conf_intervals[1:12, c(3,1,2)],  # Extract CI with ordering
+  sd = sigma_values[c(3,2,1)]          # Include sigma row
 )
 
 # Display using knitr::kable
-kable(coeff_table, caption = "Model Coefficients from Negative Binomial Regression with Offset")
+kable(round(coeff_table, 3), caption = "Model Coefficients from Negative Binomial Regression with Offset")
 
 ```
-```{r}
-# Check dispersion statistic for NB Model
-dispersion_nb <- sum(residuals(nb_model, type = "pearson")^2) / nb_model$df.residual
-
-# Display result
-dispersion_nb
-```
-
 
 # Conclusion
 
