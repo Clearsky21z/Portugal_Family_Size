@@ -1,7 +1,7 @@
 ---
-title: "Effect of Literacy and Age at Marriage on Family Size in Portugal"
+title: "Effect of Literacy, Age at Marriage and Region on Family Size in Portugal"
 author: 
-  - Heidi Wang AKA Wu Zetian
+  - Heidi Wang
   - John Zhang
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
@@ -30,22 +30,24 @@ table(portugal$literacy)
 ```
 
 # Introduction
+Family size plays a crucial role in economic stability, social structures, and gender equality, making it important to understand the factors influencing fertility trends. Among these, literacy levels and age at marriage have been consistently identified as key drivers. Research indicates that higher literacy rates, particularly among women, are linked to smaller families, as education improves access to family planning and economic opportunities (Götmark & Andersson, 2020). Conversely, early marriage extends reproductive years, often resulting in larger families (Dessen & Torres, 2019). Given that Portugal, Mexico, and Brazil had similar GDP per capita in 1980, studies on fertility trends in these countries provide valuable context for understanding how literacy and marriage timing influenced family size in Portugal.
 
-Family size is a critical determinant of economic stability, social structures, and gender equality, making it essential to understand the factors that influence fertility trends. Among these factors, literacy levels and the age at marriage have been consistently identified as key drivers of family size. Research indicates that higher literacy rates, particularly among women, are associated with smaller families, as education enhances access to family planning resources and expands economic opportunities (Götmark & Andersson, 2020). Similarly, marrying at a younger age tends to extend reproductive years, often resulting in larger families (Dessen & Torres, 2019). Since Portugal, Mexico, and Brazil had similar GDP per capita in 1980, existing studies on fertility trends in these countries provide valuable insights into how literacy and marriage timing may have influenced family size in Portugal.
+Research has shown that education, marriage age, and fertility rates are interconnected. In Portugal, increased female literacy, economic growth, and better access to contraception have led to declining fertility rates, with the average age at first childbirth rising from 25 years in 1960 to 29.5 years in 2012 (Arqueiro et al., 2016). Similar trends have been observed in Brazil, where early marriage and large families were once common due to traditional family structures, but economic shifts and higher female workforce participation have contributed to a steady decline in birth rates (Dessen & Torres, 2019). Additionally, whether individuals live in rural or urban areas also plays a role, as fertility rates tend to be higher in less populated regions with stronger traditional family norms and lower access to education and healthcare (Dessen & Torres, 2019). These patterns align with global findings, as higher education levels are consistently associated with delayed marriage and lower fertility rates across multiple regions in Mexico(Götmark & Andersson, 2020). Given the economic similarities between Portugal, Brazil, and Mexico in 1980, these studies provide important insights into how literacy and marriage timing influenced Portugal’s fertility trends.
 
-Studies in Portugal have demonstrated a strong connection between education, marriage age, and fertility rates. Arqueiro et al. (2016) found that rising female literacy, economic development, and improved access to contraception have contributed to declining fertility rates. Their research showed that the average age at first childbirth in Portugal increased from 25 years in 1960 to 29.5 years in 2012, reinforcing the role of delayed marriage in reducing family size. These findings align with broader global patterns. In Brazil, Dessen and Torres (2019) examined how traditional family structures historically encouraged early marriage and larger families, but economic transformations and increased female workforce participation have contributed to a steady decline in birth rates. Similarly, Götmark and Andersson (2020) found that higher education levels are consistently associated with delayed marriage and lower fertility rates across multiple regions, emphasizing education’s crucial role in shaping fertility outcomes. Given the economic similarities between Portugal, Brazil, and Mexico in 1980, these studies offer meaningful context for evaluating how literacy and marriage age influenced fertility patterns in Portugal.
-
-This study seeks to investigate the relationship between literacy, age at marriage, and family size in Portugal, employing generalized linear models (GLMs) to quantify these effects. By analyzing birth rate variations while accounting for explanatory variables—including regional differences based on population size—this research aims to provide robust statistical evidence on how literacy and marriage timing influence fertility rates. The findings will contribute to ongoing discussions on family planning, gender equality, and demographic change in Portugal, offering insights that can inform policy development in education, economic growth, and social welfare. Through this analysis, the study will deepen our understanding of the interplay between education, marriage dynamics, and fertility, helping to identify key factors shaping family structures in Portugal.
+This study examines how literacy, age at marriage, and regional differences influence family size in Portugal using generalized linear models (GLMs). By analyzing variations in family size while accounting for these key explanatory variables, the research aims to provide robust statistical evidence on their impact. The findings contribute to discussions on family planning, gender equality, and demographic trends in Portugal, offering valuable insights to inform policy development in education, economic growth, and social welfare.
 
 # Method
+This study employs a generalized linear model (GLM) with a Poisson distribution to examine the relationship between literacy, age at marriage, and family size in Portugal. Since family size is a count variable representing the number of children per family, the Poisson model is well-suited for non-negative integer-valued data. The predictor variables in the model include age at marriage (categorical), literacy (categorical), and region (categorical). The inclusion of region as a predictor is supported by peer-reviewed literature, which suggests that geographic differences may influence fertility rates. A fundamental assumption of the Poisson model is that the mean and variance of the response variable are equal, which will be evaluated through exploratory data analysis (EDA).
 
-We use a Generalized Linear Model (GLM) with a Poisson distribution to model the number of children per family, accounting for potential overdispersion using a quasi-Poisson or negative binomial approach. 
+To assess the suitability of the Poisson model, the empirical distribution of family size will be plotted and mean-variance comparisons will be performed to check for over-dispersion, which occurs when the variance exceeds the mean, violating Poisson assumptions. Additionally, a likelihood ratio test (LRT) will be conducted to determine whether region is a necessary predictor. This will be achieved by comparing a full Poisson model (which includes region) with a reduced model that excludes it. A statistically significant result will indicate that region significantly contributes to explaining variation in family size, justifying its inclusion in the final model.
+
+If over-dispersion is detected, negative binomial (NB) GLM will be considered, as it introduces an additional dispersion parameter to account for excess variability. Once the most appropriate model is selected, the estimated coefficients will be interpreted directly to assess the effects of literacy, marriage age, and region on family size. This approach ensures that the final model provides a robust and meaningful statistical analysis of fertility patterns in Portugal.
 
 # Result
 ## Statistical Summary
 The dataset analyzed in this study includes key demographic and fertility-related variables, with the number of children per woman serving as the response variable. The predictor variables considered include literacy, age at marriage, and region. Figure 1 illustrates the distribution of these categorical variables, showing that the majority of women were literate (88.7%), while a smaller proportion (11.3%) were illiterate. Regarding age at marriage, the most common category was 22-25 years (28.5%), followed by 20-22 years (21.9%) and 25-30 years (17.9%), while early marriage before 15 years was rare (1.0%). The regional distribution indicates that most respondents lived in rural areas with populations below 10,000 (68.0%), while smaller proportions resided in Lisbon (9.1%) and Porto (3.1%).
 
-```{r descriptive_stats}
+```{r descriptive_stats, fig.cap="Most women married at 22-25 years (28.5%), were literate (88.7%), and lived in rural areas (68.0%)"}
 # Modify labels for categorical variables
 portugal <- portugal %>%
   mutate(ageMarried = recode(ageMarried, "30toInf" = "30+", "0to15" = "0 - 15", 
@@ -81,22 +83,22 @@ ggplot(data_combined, aes(x = Variable, y = Freq, fill = Category)) +
   facet_wrap(~ Category, scales = "free_x") +
   labs(title = "Distribution of Categorical Variables", x = "Category", y = "Count") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0.5))
 ```
 
 The response variable, the number of children per woman, exhibits a right-skewed distribution (Figure 2). While most women have between 0 and 5 children, a small proportion has significantly larger families. The mean number of children per woman is 2.26, while the variance is 3.46, suggesting greater variability than expected under a Poisson distribution, which assumes an equal mean and variance. This initial observation indicates potential overdispersion, necessitating further examination of model assumptions.
 
-```{r poisson_eda}
+```{r poisson_eda, fig.cap="The histogram shows a right-skewed distribution of children per woman, with most having 0 to 5 children. The density plot suggests overdispersion, indicating a potential need for a negative binomial model"}
 # Histogram of children count with density
 ggplot(portugal, aes(x = children)) +
   geom_histogram(aes(y = ..density..), bins = 15, fill = "orange", alpha = 0.5, color = "black") +
   geom_density(color = "purple", size = 1) +
   labs(title = "Distribution of Number of Children", x = "Children", y = "Density") +
-  theme_minimal()
+  theme_minimal() + theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ## Model Selection
-To investigate the impact of literacy, age at marriage, and region on fertility, a Poisson regression model was first estimated using log-transformed years since marriage as an offset (Table 1). This offset accounts for differences in marital duration, ensuring meaningful comparisons across individuals. The Poisson model results indicate that literacy is associated with a small but statistically significant increase in fertility, with illiterate women having an estimated 12.9% higher fertility rate than literate women (p < 0.001). Additionally, women who married between 15-18 years had significantly higher fertility rates than those who married between 18-20 years (reference category), supporting existing literature linking early marriage to increased childbearing. Regional effects were also observed, with women residing in urban areas (Lisbon, Porto, and regions with populations over 20,000) having significantly lower fertility rates compared to those in rural regions (populations below 10,000), aligning with demographic trends.
+To investigate the impact of literacy, age at marriage, and region on fertility, a Poisson regression model was first estimated using log-transformed years since marriage as an offset (Table 1). This offset accounts for differences in marital duration, ensuring meaningful comparisons across individuals. The Poisson model results indicate that literacy is associated with a small but statistically significant increase in fertility, with illiterate women having an higher fertility rate than literate women (p < 0.001). Additionally, women who married between 15-18 years had significantly higher fertility rates than those who married between 18-20 years (reference category), supporting existing literature linking early marriage to increased childbearing. Regional effects were also observed, with women residing in urban areas (Lisbon, Porto, and regions with populations over 20,000) having significantly lower fertility rates compared to those in rural regions (populations below 10,000), aligning with demographic trends.
 
 ```{r}
 # Transform monthsSinceM into logYearsMarried
@@ -119,12 +121,15 @@ coeff_table <- data.frame(
   p_Value = round(summary_1$coefficients[, "Pr(>|z|)"], 3)
 )
 
+# Rename columns properly
+colnames(coeff_table) <- c("Estimate", "Standard Error", "p-Value")
+
 # Display results
-kable(coeff_table, caption = "Model Coefficients from Poisson Regression with Offset (Log Years Married)")
+kable(coeff_table, caption = "Model Coefficients from Poisson Regression with Offset (Log Years Married), women who married at age 15-18 tend to have higher fertility than those who married at age 22-25, while those unliterated tend to have higher fertility than those literated")
 
 ```
 
-To assess whether region is a necessary predictor, a likelihood ratio test was conducted by comparing the full Poisson model (which included region) with a reduced model that excluded region. The results, presented in Table 2, indicate a highly significant chi-square test statistic (141.675, p < 0.001). Since the p-value is below the 0.05 significance level, we reject the null hypothesis that region has no effect on fertility. This finding supports the inclusion of region as an essential predictor, consistent with prior demographic research emphasizing the role of urbanization in fertility patterns.
+To assess whether region is a necessary predictor as suggested by the literature, a likelihood ratio test was conducted by comparing the full Poisson model (which included region) with a reduced model that excluded region. The results, presented in Table 2, indicate a highly significant chi-square test statistic (141.675, p < 0.001). Since the p-value is below the 0.05 significance level, we reject the null hypothesis that region has no effect on fertility. This finding supports the inclusion of region as an essential predictor, consistent with prior demographic research emphasizing the role of urbanization in fertility patterns.
 
 ```{r}
 # Fit Reduced Poisson Model without Region
@@ -145,15 +150,16 @@ lrt_table <- data.frame(
   setNames(c("Model", "Log Likelihood", "Degrees of Freedom", "Chi Square", "p-value"))
 
 # Display results with knitr::kable
-kable(lrt_table, caption = "Likelihood Ratio Test: Evaluating the Importance of Region")
+kable(lrt_table, caption = "Likelihood Ratio Test Evaluating the Importance of Region, where region is significant in the model")
 
 ```
 
 Although the Poisson model provides valuable insights, evidence of overdispersion in the response variable suggests that the Poisson assumption of equal mean and variance is violated. This overdispersion was further confirmed by the dispersion parameter estimate (0.245), which indicates greater variability than the Poisson model can accommodate. As a result, a negative binomial model was estimated to account for excess variability (Table 3). The negative binomial model confirmed the key findings of the Poisson model, with the effects of literacy, age at marriage, and region remaining statistically significant. This suggests that our results are robust across model specifications.
 
 ```{r}
-# Load necessary library
+# Load necessary libraries
 library(glmmTMB)
+library(knitr)
 
 # Ensure monthsSinceM has no zeros or NAs to avoid log issues
 portugal <- portugal %>%
@@ -166,30 +172,61 @@ nb_model <- glmmTMB(children ~ literacy + ageMarried + region + offset(logYearsM
                     data = portugal, 
                     family = nbinom2)
 
-# Extract confidence intervals
-conf_intervals <- confint(nb_model)
+# Summarize the model
+summary_nb <- summary(nb_model)
 
-# Compute sigma variation
-sigma_values <- 1 / sqrt(confint(nb_model, parm = "sigma"))
-
-# Format coefficient table
-coeff_table <- rbind(
-  conf_intervals[1:12, c(3,1,2)],  # Extract CI with ordering
-  sd = sigma_values[c(3,2,1)]          # Include sigma row
+# Extract coefficients (Fixed effects only)
+coeff_table <- data.frame(
+  Estimate = round(summary_nb$coefficients$cond[, "Estimate"], 3),
+  Std_Error = round(summary_nb$coefficients$cond[, "Std. Error"], 3),
+  p_Value = round(summary_nb$coefficients$cond[, "Pr(>|z|)"], 3)
 )
 
-# Display using knitr::kable
-kable(round(coeff_table, 3), caption = "Model Coefficients from Negative Binomial Regression with Offset")
+# Extract confidence intervals **only for fixed effects**
+conf_intervals <- confint(nb_model, parm = names(summary_nb$coefficients$cond))
+
+# Convert confidence intervals to a data frame with proper alignment
+conf_table <- data.frame(
+  `2.5 %` = round(conf_intervals[, 1], 3),
+  `97.5 %` = round(conf_intervals[, 2], 3)
+)
+
+# Combine coefficient estimates with confidence intervals
+coeff_table <- cbind(coeff_table, conf_table)
+
+# Compute sigma variation for dispersion parameter
+sigma_values <- 1 / sqrt(confint(nb_model, parm = "sigma"))
+
+# Append the dispersion parameter (sd) row manually
+coeff_table <- rbind(coeff_table, data.frame(
+  Estimate = round(sigma_values[3], 3),
+  Std_Error = NA,  # No standard error for sd
+  p_Value = NA,     # No p-value for sd
+  `2.5 %` = round(sigma_values[2], 3),
+  `97.5 %` = round(sigma_values[1], 3)
+))
+
+# Assign row name for dispersion parameter
+rownames(coeff_table)[nrow(coeff_table)] <- "sd"
+
+# Rename columns properly
+colnames(coeff_table) <- c("Estimate", "Standard Error", "p-Value", "2.5%", "97.5%")
+
+# Display results using knitr::kable
+kable(coeff_table, caption = "Model Coefficients from Negative Binomial Regression with Offset(Log Years Married), the results are similar with previous poisson model where women who married at age 15-18 tend to have higher fertility than those who married at age 22-25, while those unliterated tend to have higher fertility than those literated.")
 
 ```
 
 # Conclusion
-The negative binomial regression results (Table 3) reveal that literacy, age at marriage, and regional factors significantly influence fertility rates in Portugal. Exponentiating the coefficients provides a clearer interpretation in terms of relative fertility rates. Women who are illiterate have a **12.6% higher fertility rate** compared to literate women (\( e^{0.119} = 1.126 \), 95% CI: 1.069, 1.187). This finding is consistent with previous research linking lower educational attainment to higher fertility, as education enhances family planning awareness and economic opportunities, reducing the number of children born.  
+The negative binomial regression results (Table 3) confirm that literacy, age at marriage, and regional factors significantly influence fertility rates in Portugal. Exponentiating the coefficients provides a clearer interpretation in terms of relative fertility rates. Women who are illiterate have a **12.6% higher fertility rate** compared to literate women (\( e^{0.119} = 1.126 \), 95% CI: 1.069, 1.187). This finding aligns with prior studies indicating that lower educational attainment is associated with higher fertility due to reduced access to family planning and economic opportunities (Götmark & Andersson, 2020). Similarly, age at marriage plays a crucial role in fertility outcomes, with women who married between **15-18 years** exhibiting an **8.6% higher fertility rate** (\( e^{0.083} = 1.086 \), 95% CI: 1.010, 1.169)). This result supports earlier research showing that early marriage extends the reproductive window and leads to higher fertility (Dessen & Torres, 2019). In contrast, the fertility rates for women who married at older ages (25-30 and 30+) do not differ significantly from the reference category (22-25 years), suggesting that the impact of delayed marriage on childbearing diminishes after a certain threshold.
 
-Age at marriage also plays a significant role in determining fertility levels. Compared to women who married between 18-20 years (the reference category), those who married between **15-18 years** have **8.7% higher fertility rates** (\( e^{0.083} = 1.086 \), 95% CI: 1.010, 1.169), supporting the idea that earlier marriage increases the reproductive window. In contrast, women who married at older ages (22-25, 25-30, and 30+) do not show significant differences in fertility, suggesting that the impact of delayed marriage on childbearing diminishes after a certain age threshold.  
+The impact of regional differences on fertility was confirmed by the likelihood ratio test (Table 2), where excluding regional variables significantly worsened model fit (\( \chi^2 = 141.675 \), \( p < 0.001 \)). Fertility rates were found to be **14.9% lower** for women in mid-sized regions (10k - 20k, \( e^{-0.161} = 0.851 \), 95% CI: 0.789, 0.918)), **25.5% lower** for women in larger regions (20k+, \( e^{-0.294} = 0.745 \), 95% CI: 0.696, 0.798)), and **24.1% lower** for women in Lisbon (\( e^{-0.276} = 0.759 \), 95% CI: 0.701, 0.819)). These findings align with demographic transition theory, which posits that urbanization leads to lower fertility due to increased access to education, economic opportunities, and contraception (Arqueiro et al., 2016). This is consistent with prior research in Brazil and Portugal, where economic development and increased female workforce participation have contributed to declining fertility rates (Dessen & Torres, 2019).
 
-The importance of region in predicting fertility was confirmed by the likelihood ratio test (Table 2), where excluding regional factors significantly worsened model fit (\( \chi^2 = 141.675 \), \( p < 0.001 \)). Women living in urbanized areas, particularly in Lisbon and regions with populations over 20,000, have substantially lower fertility rates compared to those in rural areas with fewer than 10,000 people. Specifically, fertility rates are **13.7% lower** for women in mid-sized regions (10k - 20k, \( e^{-0.161} = 0.851 \), 95% CI: 0.789, 0.918)), **25.5% lower** for women in larger regions (20k+, \( e^{-0.294} = 0.745 \), 95% CI: 0.696, 0.798)), and **24.1% lower** for women in Lisbon (\( e^{-0.276} = 0.759 \), 95% CI: 0.701, 0.819)). These results align with demographic transition theory, where fertility declines with increasing urbanization due to enhanced educational, economic, and contraceptive access.  
+These results reinforce the importance of education and regional socio-economic factors in shaping fertility patterns in Portugal. The findings highlight that policies aimed at increasing female literacy and delaying marriage could help moderate fertility rates. Furthermore, regional disparities suggest that improving access to reproductive health services in rural areas could contribute to more balanced fertility outcomes. Given Portugal’s historical similarities with Brazil and Mexico in terms of economic development, these insights offer valuable context for policymakers addressing demographic changes and family planning strategies.
 
-Finally, the estimated dispersion parameter (0.245) confirmed that overdispersion was present in the data, validating the choice of a negative binomial model over a Poisson regression, which assumes equal mean and variance. These findings underscore the importance of addressing educational disparities and regional fertility patterns when designing policy interventions. Expanding access to education and reproductive health services, especially in rural areas, could contribute to moderating fertility rates and improving overall family well-being.  
+# Reference
+Arqueiro, A., Cunha, J., Garbe, C., Lafontaine, D., Dionisio, M. D. L., Shiel, G., ... & Géron, S. (2016). Literacy in Portugal. Country Report. Children and adolescents.
 
+Dessen, M. A., & Torres, C. V. (2019). Family and socialization factors in Brazil: An overview. Online readings in psychology and culture, 6(3), 2.
 
+Götmark, F., & Andersson, M. (2020). Human fertility in relation to education, economy, religion, contraception, and family planning programs. BMC Public Health, 20, 1-17.
